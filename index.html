@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Cavite Road Network Mapping Party</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ubuntu+Condensed&display=swap">
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu+Condensed&display=swap" rel="stylesheet">
+    <style>
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100vw;
+  height: 100vh;
+  background-color: #000;
+}
+
+main {
+  width: 1200px;
+  height: 900px;
+  position: relative;
+  font-family: 'Ubuntu Condensed';
+}
+
+#base-map {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1200px;
+  height: 900px;
+  overflow: hidden;
+}
+
+img.tile {
+  position: absolute;
+  width: 192px;
+  height: 192px;
+  filter: brightness(1.5) contrast(0.9);
+}
+
+canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1200px;
+  height: 900px;
+}
+
+#legend {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  color: #edc;
+  line-height: 1.2em;
+  font-size: 15px;
+  border-spacing: 12px;
+}
+
+#red-cell {
+  width: 36px;
+  background-color: #f66;
+}
+
+#orange-cell {
+  width: 36px;
+  background-color: #fb6;
+}
+
+#green-cell {
+  width: 36px;
+  background-color: #6f6;
+}
+
+#legend .team-name {
+  font-size: 20px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+#description {
+  position: absolute;
+  bottom: 22px;
+  right: 22px;
+  width: 250px;
+  line-height: 1.4;
+  text-align: right;
+  color: #edc;
+  text-shadow:
+    -1px -1px 2px #000, -1px 1px 2px #000, 1px 1px 2px #000, 1px -1px 2px #000,
+    -2px -2px 4px #000, -2px 2px 4px #000, 2px 2px 4px #000, 2px -2px 4px #000
+}
+
+#description h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 900;
+}
+
+#description p {
+  margin: 0.7em 0 0;
+  font-size: 16px;
+}
+
+#description a {
+  color: #a98;
+}
+
+#description .attribution {
+  font-size: 0.8em;
+  font-style: italic;
+  color: #cba;
+}
+    </style>
+  </head>
+  <body>
+    <main>
+      <div id="base-map"></div>
+      <canvas id="track"      width="1600" height="1200"></canvas>
+      <canvas id="foreground" width="1600" height="1200"></canvas>
+
+      <div id="description">
+        <h1>Cavite Road Network Mapping Party</h1>
+        <p>9&nbsp;people, 3&nbsp;vehicles, 12&nbsp;GPS units, 10&nbsp;&frac12;&nbsp;hours, 500&nbsp;kilometers, 13&nbsp;towns and cities, 1,300&nbsp;POIs, 1&nbsp;massive OpenStreetMap mapping party!</p>
+        <p>This animation shows the progress of three teams in going around the Philippine province of Cavite on 11 September 2010 in order to collect data and GPS tracks. Starting in Alabang, Metro Manila, the teams went south and eventually ended up at the picturesque city of Tagaytay. The collected data was then used to improve the crowdsourced <a href="https://osm.org">OpenStreetMap</a> project.</p>
+        <p class="attribution">Base map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a><br>Base map style: CARTO Dark Matter</p>
+      </div>
+
+      <table id="legend">
+        <tr>
+          <td id="red-cell"></td>
+          <td><div class="team-name">Red team</div> Rally, Rem, Rhodor</td>
+        </tr>
+        <tr>
+          <td id="orange-cell"></td>
+          <td><div class="team-name">Orange team</div> Eugene, Ian, Ian’s mom</td>
+        </tr>
+        <tr>
+          <td id="green-cell"></td>
+          <td><div class="team-name">Green team</div> Sorbi, Maning, Ernest</td>
+        </tr>
+      </table>
+    </main>
+    <script>
+'use strict';
+
+// ----------------------------------------
+// FUNDAMENTAL CONSTANTS
+
+const TWO_PI = Math.PI * 2;
+const SECS_IN_HOUR = 60 * 60;
+const SECS_IN_12_HOURS = SECS_IN_HOUR * 12;
+const PH_TZ_OFFSET = 8;  // in hours
+
+// ----------------------------------------
+// APP PARAMETERS
+
+const MIN_Y = 0.5;
+const MIN_TIMESTAMP = 1284163200;  // 8am
+const MAX_TIMESTAMP = 1284202800;  // 7pm
+
+const X_SCALE = 256;
+const Y_SCALE = 116;
+const X_TRIM = 0.25;
+const Y_TRIM = 1.08;
+
+const TIMESTAMP_DELTA = 20;
+
+const CANVAS_WIDTH = 1600;
+const CANVAS_HEIGHT = 1200;
+
+const CLOCK_CX = 180;
+const CLOCK_CY = 180;
+const CLOCK_RADIUS = 150;
+const CLOCK_HAND_COLOR = '#eca';
+const CLOCK_FACE_COLOR = '#555';
+const CLOCK_HOUR_HAND_WIDTH = 10;
+const CLOCK_MINUTE_HAND_WIDTH = 7;
+const CLOCK_HOUR_HAND_RADIUS = 80;
+const CLOCK_MINUTE_HAND_RADIUS = 140;
+const CLOCK_HAND_REVERSE_RADIUS = 15;
+
+const TRACK_WIDTH = 3;
+const RED_TEAM_COLOR = '#f66';
+const ORANGE_TEAM_COLOR = '#fb6';
+const GREEN_TEAM_COLOR = '#6f6';
+const TEAM_POS_RADIUS = 8;
+const TEAM_POS_COLOR = '#ff8';
+const TILE_X0 = 3420;
+const TILE_X1 = 3428;
+const TILE_Y0 = 1881;
+const TILE_Y1 = 1886;
+const TILE_SCALED_SIZE = 192;
+const TILE_X_ADJUST = -79;
+const TILE_Y_ADJUST = -138;
+
+// ----------------------------------------
+// GLOBAL VARIABLES
+
+const TrackCtx      = document.getElementById('track'     ).getContext('2d');
+const ForegroundCtx = document.getElementById('foreground').getContext('2d');
+
+let RedData, GreenData, OrangeData;
+let TimestampIter = MIN_TIMESTAMP;
+
+TrackCtx.lineWidth = TRACK_WIDTH;
+TrackCtx.lineCap = 'round';
+TrackCtx.lineJoin = 'round';
+
+// ----------------------------------------
+// FUNCTIONS
+
+const getJson = filename => fetch(filename).then(response => response.json());
+
+const processRawData = data => {
+  const finalData = [];
+  for (const record of data) {
+    if (record[0] > MIN_TIMESTAMP && record[0] < MAX_TIMESTAMP && record[2] > MIN_Y) {
+      const x = (record[1] - X_TRIM) * X_SCALE;
+      const y = (record[2] - Y_TRIM) * Y_SCALE;
+      finalData.push([record[0], x, y]);
+    }
+  }
+  return finalData;
+};
+
+const drawBaseMap = () => {
+  const div = document.getElementById('base-map');
+  for (let x = TILE_X0; x <= TILE_X1; x++) {
+    for (let y = TILE_Y0; y <= TILE_Y1; y++) {
+      const tile = new Image();
+      tile.className = 'tile';
+      tile.src = `https://cartodb-basemaps-a.global.ssl.fastly.net/dark_all/12/${x}/${y}@2x.png`;
+      tile.style.left = `${(x - TILE_X0) * TILE_SCALED_SIZE + TILE_X_ADJUST}px`;
+      tile.style.top  = `${(y - TILE_Y0) * TILE_SCALED_SIZE + TILE_Y_ADJUST}px`;
+      div.appendChild(tile);
+    }
+  }
+};
+
+const drawClock = (timestamp) => {
+
+  const drawHand = (angle, width, length) => {
+    ForegroundCtx.lineWidth = width;
+    ForegroundCtx.beginPath();
+    ForegroundCtx.moveTo(
+      CLOCK_CX - Math.sin(angle) * CLOCK_HAND_REVERSE_RADIUS,
+      CLOCK_CY + Math.cos(angle) * CLOCK_HAND_REVERSE_RADIUS,
+    );
+    ForegroundCtx.lineTo(
+      CLOCK_CX + Math.sin(angle) * length,
+      CLOCK_CY - Math.cos(angle) * length,
+    );
+    ForegroundCtx.stroke();
+  };
+
+  ForegroundCtx.strokeStyle = CLOCK_HAND_COLOR;
+  ForegroundCtx.fillStyle = CLOCK_FACE_COLOR;
+
+  // Clock background
+  ForegroundCtx.beginPath();
+  ForegroundCtx.ellipse(CLOCK_CX, CLOCK_CY, CLOCK_RADIUS, CLOCK_RADIUS, 0, 0, TWO_PI);
+  ForegroundCtx.fill();
+
+  // Clock hands
+  const timeDelta = timestamp - (MIN_TIMESTAMP - PH_TZ_OFFSET * SECS_IN_HOUR);
+  const hourAngle = timeDelta / SECS_IN_12_HOURS * TWO_PI;
+  const minuteAngle = (timeDelta % SECS_IN_HOUR) / SECS_IN_HOUR * TWO_PI;
+  drawHand(hourAngle  , CLOCK_HOUR_HAND_WIDTH  , CLOCK_HOUR_HAND_RADIUS  );
+  drawHand(minuteAngle, CLOCK_MINUTE_HAND_WIDTH, CLOCK_MINUTE_HAND_RADIUS);
+};
+
+const drawGpx = (data, strokeStyle, maxTime) => {
+
+  let hasStarted;
+  let firstRecord = data[0];
+  let lastRecord;
+
+  // Draw portion of track between maxTime - TIMESTAMP_DELTA and maxTime
+  for (const record of data) {
+    if (record[0] < maxTime - TIMESTAMP_DELTA) {
+      firstRecord = record;
+    }
+    else if (record[0] <= maxTime) {
+      if (!hasStarted) {
+        hasStarted = true;
+        TrackCtx.beginPath();
+        TrackCtx.moveTo(firstRecord[1], firstRecord[2]);
+      }
+      TrackCtx.lineTo(record[1], record[2]);
+
+      lastRecord = record;
+    }
+    else break;
+  }
+  if (hasStarted) {
+    TrackCtx.strokeStyle = strokeStyle;
+    TrackCtx.stroke();
+  }
+  else {
+    lastRecord = firstRecord;
+  }
+
+  // Draw current position of team as a circle
+  ForegroundCtx.fillStyle = TEAM_POS_COLOR;
+  ForegroundCtx.beginPath();
+  ForegroundCtx.ellipse(lastRecord[1], lastRecord[2], TEAM_POS_RADIUS, TEAM_POS_RADIUS, 0, 0, TWO_PI);
+  ForegroundCtx.fill();
+};
+
+const drawFrame = () => {
+
+  ForegroundCtx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+  drawClock(TimestampIter);
+
+  drawGpx(RedData   , RED_TEAM_COLOR   , TimestampIter);
+  drawGpx(OrangeData, ORANGE_TEAM_COLOR, TimestampIter);
+  drawGpx(GreenData , GREEN_TEAM_COLOR , TimestampIter);
+
+  if (TimestampIter < MAX_TIMESTAMP) {
+    TimestampIter += TIMESTAMP_DELTA;
+    requestAnimationFrame(drawFrame);
+  }
+}
+
+// ----------------------------------------
+// MAIN PROCESS
+
+drawBaseMap();
+ drawClock(MIN_TIMESTAMP);
+
+setTimeout(
+  () => {
+    Promise.all([
+      getJson('red.json'   ).then(data => { RedData    = processRawData(data) }),
+      getJson('green.json' ).then(data => { GreenData  = processRawData(data) }),
+      getJson('orange.json').then(data => { OrangeData = processRawData(data) }),
+    ]).then(() => { requestAnimationFrame(drawFrame) });
+  },
+  1000,
+);
+    </script>
+  </body>
+</html>
