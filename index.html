@@ -243,7 +243,7 @@ const drawBaseMap = () => {
     for (let y = TILE_Y0; y <= TILE_Y1; y++) {
       const tile = new Image();
       tile.className = 'tile';
-      tile.src = `https://cartodb-basemaps-a.global.ssl.fastly.net/dark_all/12/${x}/${y}@2x.png`;
+      tile.src = `https://basemaps.cartocdn.com/rastertiles/dark_all/12/${x}/${y}@2x.png?key=cb1_2ive_2_49fd2dc5752eb5e5a73c9e7c`;
       tile.style.left = `${(x - TILE_X0) * TILE_SCALED_SIZE + TILE_X_ADJUST}px`;
       tile.style.top  = `${(y - TILE_Y0) * TILE_SCALED_SIZE + TILE_Y_ADJUST}px`;
       div.appendChild(tile);
