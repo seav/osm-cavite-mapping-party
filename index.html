@@ -15,6 +15,12 @@ html, body {
 }
 
 body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
   background-color: #000;
 }
 
@@ -23,6 +29,7 @@ main {
   height: 900px;
   position: relative;
   font-family: 'Ubuntu Condensed';
+  flex-shrink: 0;
 }
 
 #base-map {
@@ -193,6 +200,8 @@ const Y_TRIM = 1.08;
 
 const TIMESTAMP_DELTA = 20;
 
+const MAP_WIDTH = 1200;
+const MAP_HEIGHT = 900;
 const CANVAS_WIDTH = 1600;
 const CANVAS_HEIGHT = 1200;
 
@@ -233,6 +242,8 @@ const ForegroundCtx = document.getElementById('foreground').getContext('2d');
 let RedData, GreenData, OrangeData;
 let TimestampIter = MIN_TIMESTAMP;
 
+// References to DOM elements
+const MainDiv = d3.select('main');
 let HourHand, MinuteHand;
 
 TrackCtx.lineWidth = TRACK_WIDTH;
@@ -243,6 +254,14 @@ TrackCtx.lineJoin = 'round';
 // FUNCTIONS
 
 const getJson = filename => fetch(filename).then(response => response.json());
+
+const fitToViewport = () => {
+  const scale = Math.min(
+    window.innerWidth  / MAP_WIDTH,
+    window.innerHeight / MAP_HEIGHT,
+  );
+  MainDiv.node().style.transform = `scale(${scale})`;
+};
 
 const processRawData = (data) => {
   const finalData = [];
@@ -373,6 +392,10 @@ const drawFrame = () => {
 // ----------------------------------------
 // MAIN PROCESS
 
+window.addEventListener('resize', fitToViewport);
+window.addEventListener('orientationchange', fitToViewport);
+
+fitToViewport();
 drawBaseMap();
 createClock();
 updateClock(MIN_TIMESTAMP);
