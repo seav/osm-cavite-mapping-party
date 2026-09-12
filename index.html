@@ -3,9 +3,10 @@
   <head>
     <meta charset="UTF-8">
     <title>Cavite Road Network Mapping Party</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ubuntu+Condensed&display=swap">
-    <link href="https://fonts.googleapis.com/css2?family=Ubuntu+Condensed&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400..900;1,400..900&display=swap">
     <style>
 
 html, body {
@@ -14,11 +15,6 @@ html, body {
 }
 
 body {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100vw;
-  height: 100vh;
   background-color: #000;
 }
 
@@ -53,80 +49,83 @@ canvas {
   height: 900px;
 }
 
-#clock {
+#description {
   position: absolute;
   top: 20px;
   left: 20px;
-  width: 200px;
-  height: 200px;
-}
-
-#legend {
-  position: absolute;
-  bottom: 10px;
-  left: 10px;
-  color: #edc;
-  line-height: 1.2em;
-  font-size: 15px;
-  border-spacing: 12px;
-}
-
-#red-cell {
-  width: 36px;
-  background-color: #f66;
-}
-
-#orange-cell {
-  width: 36px;
-  background-color: #fb6;
-}
-
-#green-cell {
-  width: 36px;
-  background-color: #6f6;
-}
-
-#legend .team-name {
-  font-size: 20px;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-#description {
-  position: absolute;
-  bottom: 22px;
-  right: 22px;
-  width: 250px;
-  line-height: 1.4;
-  text-align: right;
-  color: #edc;
-  text-shadow:
-    -1px -1px 2px #000, -1px 1px 2px #000, 1px 1px 2px #000, 1px -1px 2px #000,
-    -2px -2px 4px #000, -2px 2px 4px #000, 2px 2px 4px #000, 2px -2px 4px #000
+  box-sizing: border-box;
+  width: 320px;
+  height: 860px;
+  padding: 20px 30px;
+  border-radius: 15px;
+  color: #ddd;
+  background-color: #0008;
 }
 
 #description h1 {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 900;
+  margin: 0 0 20px 0;
+  font-family: Alegreya;
+  font-size: 36px;
+  font-weight: 400;
+  line-height: 1;
+  color: #ffc;
 }
 
 #description p {
   margin: 0.7em 0 0;
-  font-size: 16px;
+  font-size: 18px;
+  line-height: 1.4;
 }
 
 #description a {
-  color: #a98;
+  color: #fdb;
 }
 
 #description .attribution {
   margin-top: 1.2em;
-  padding-top: 0.25em;
+  padding-top: 0.5em;
   border-top: 1px solid #a98;
-  font-size: 0.8em;
-  font-style: italic;
-  color: #cba;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #aaa;
+}
+
+#legend {
+  margin: 20px 0 20px -10px;
+  line-height: 1;
+  border-spacing: 10px;
+}
+
+.legend-square {
+  width: 20px;
+}
+
+#red-cell {
+  background-color: #f66;
+}
+
+#orange-cell {
+  background-color: #fb6;
+}
+
+#green-cell {
+  background-color: #6f6;
+}
+
+#legend .team-name {
+  margin-bottom: 7px;
+  font-size: 22px;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: #ffc;
+}
+
+#clock {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  width: 200px;
+  height: 200px;
 }
 
     </style>
@@ -142,29 +141,29 @@ canvas {
       <div id="description">
         <h1>Cavite Road Network Mapping Party</h1>
         <p>9&nbsp;people, 3&nbsp;vehicles, 12&nbsp;GPS units, 10&nbsp;&frac12;&nbsp;hours, 500&nbsp;kilometers, 13&nbsp;towns and cities, 1,300&nbsp;POIs, 1&nbsp;massive OpenStreetMap mapping party!</p>
-        <p>This animation shows the progress of three teams in going around the Philippine province of Cavite on 11 September 2010 in order to collect data and GPS tracks. Starting in Alabang, Metro Manila, the teams went south and eventually ended up at the picturesque city of Tagaytay. The collected data was then used to improve the crowdsourced <a href="https://osm.org">OpenStreetMap</a> project.</p>
+        <p>This animation shows the progress of three teams going around the Philippine province of Cavite on 11 September 2010 collecting data and GPS tracks. Starting in Alabang, Metro Manila, the teams went south and eventually ended up at the picturesque city of Tagaytay. The collected data was used to improve the crowdsourced <a href="https://osm.org">OpenStreetMap</a> project.</p>
+        <table id="legend">
+          <tr>
+            <td id="red-cell" class="legend-square"></td>
+            <td><div class="team-name">Red team</div> Rally, Rem, Rhodor</td>
+          </tr>
+          <tr>
+            <td id="orange-cell" class="legend-square"></td>
+            <td><div class="team-name">Orange team</div> Eugene, Ian, Ian’s mom</td>
+          </tr>
+          <tr>
+            <td id="green-cell" class="legend-square"></td>
+            <td><div class="team-name">Green team</div> Sorbi, Maning, Ernest</td>
+          </tr>
+        </table>
         <p class="attribution">
-          Animated map by <a href="https://en.osm.town/@seav">Eugene Alvin Villar (seav)</a><br>
-          Base map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a><br>
+          Created by <a href="https://en.osm.town/@seav">Eugene Alvin Villar (seav)</a><br>
+          Base map data: &copy; <a href="https://www.openstreetmap.org/copyright">OSM contributors</a><br>
           Base map style: CARTO Dark Matter<br>
           This map’s <a href="https://github.com/seav/osm-cavite-mapping-party">source code in GitHub</a>
         </p>
       </div>
 
-      <table id="legend">
-        <tr>
-          <td id="red-cell"></td>
-          <td><div class="team-name">Red team</div> Rally, Rem, Rhodor</td>
-        </tr>
-        <tr>
-          <td id="orange-cell"></td>
-          <td><div class="team-name">Orange team</div> Eugene, Ian, Ian’s mom</td>
-        </tr>
-        <tr>
-          <td id="green-cell"></td>
-          <td><div class="team-name">Green team</div> Sorbi, Maning, Ernest</td>
-        </tr>
-      </table>
     </main>
     <script type="module">
 
@@ -189,7 +188,7 @@ const MAX_TIMESTAMP = 1284202800;  // 7pm
 
 const X_SCALE = 256;
 const Y_SCALE = 116;
-const X_TRIM = 0.25;
+const X_TRIM = -0.75;
 const Y_TRIM = 1.08;
 
 const TIMESTAMP_DELTA = 20;
@@ -198,7 +197,7 @@ const CANVAS_WIDTH = 1600;
 const CANVAS_HEIGHT = 1200;
 
 const CLOCK_RADIUS = 150;
-const CLOCK_HAND_COLOR = '#eca';
+const CLOCK_HAND_COLOR = '#ffc';
 const CLOCK_FACE_COLOR = '#555';
 const CLOCK_TICK_COLOR = '#888';
 const CLOCK_MAJOR_TICK_WIDTH = 7;
@@ -217,8 +216,8 @@ const ORANGE_TEAM_COLOR = '#fb6';
 const GREEN_TEAM_COLOR = '#6f6';
 const TEAM_POS_RADIUS = 8;
 const TEAM_POS_COLOR = '#ff8';
-const TILE_X0 = 3420;
-const TILE_X1 = 3428;
+const TILE_X0 = 3419;
+const TILE_X1 = 3425;
 const TILE_Y0 = 1881;
 const TILE_Y1 = 1886;
 const TILE_SCALED_SIZE = 192;
