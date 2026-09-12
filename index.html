@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ubuntu+Condensed&display=swap">
     <link href="https://fonts.googleapis.com/css2?family=Ubuntu+Condensed&display=swap" rel="stylesheet">
     <style>
+
 html, body {
   margin: 0;
   padding: 0;
@@ -50,6 +51,14 @@ canvas {
   left: 0;
   width: 1200px;
   height: 900px;
+}
+
+#clock {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  width: 200px;
+  height: 200px;
 }
 
 #legend {
@@ -119,6 +128,7 @@ canvas {
   font-style: italic;
   color: #cba;
 }
+
     </style>
   </head>
   <body>
@@ -126,6 +136,8 @@ canvas {
       <div id="base-map"></div>
       <canvas id="track"      width="1600" height="1200"></canvas>
       <canvas id="foreground" width="1600" height="1200"></canvas>
+
+      <svg id="clock"></svg>
 
       <div id="description">
         <h1>Cavite Road Network Mapping Party</h1>
@@ -154,8 +166,11 @@ canvas {
         </tr>
       </table>
     </main>
-    <script>
+    <script type="module">
+
 'use strict';
+
+import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7/+esm';
 
 // ----------------------------------------
 // FUNDAMENTAL CONSTANTS
@@ -182,16 +197,19 @@ const TIMESTAMP_DELTA = 20;
 const CANVAS_WIDTH = 1600;
 const CANVAS_HEIGHT = 1200;
 
-const CLOCK_CX = 180;
-const CLOCK_CY = 180;
 const CLOCK_RADIUS = 150;
 const CLOCK_HAND_COLOR = '#eca';
 const CLOCK_FACE_COLOR = '#555';
+const CLOCK_TICK_COLOR = '#888';
+const CLOCK_MAJOR_TICK_WIDTH = 7;
+const CLOCK_MINOR_TICK_WIDTH = 2;
+const CLOCK_TICK_MIN_RADIUS = 100;
+const CLOCK_TICK_MAX_RADIUS = 140;
 const CLOCK_HOUR_HAND_WIDTH = 10;
-const CLOCK_MINUTE_HAND_WIDTH = 7;
+const CLOCK_MINUTE_HAND_WIDTH = 10;
 const CLOCK_HOUR_HAND_RADIUS = 80;
 const CLOCK_MINUTE_HAND_RADIUS = 140;
-const CLOCK_HAND_REVERSE_RADIUS = 15;
+const CLOCK_HAND_REVERSE_RADIUS = 30;
 
 const TRACK_WIDTH = 3;
 const RED_TEAM_COLOR = '#f66';
@@ -216,6 +234,8 @@ const ForegroundCtx = document.getElementById('foreground').getContext('2d');
 let RedData, GreenData, OrangeData;
 let TimestampIter = MIN_TIMESTAMP;
 
+let HourHand, MinuteHand;
+
 TrackCtx.lineWidth = TRACK_WIDTH;
 TrackCtx.lineCap = 'round';
 TrackCtx.lineJoin = 'round';
@@ -225,7 +245,7 @@ TrackCtx.lineJoin = 'round';
 
 const getJson = filename => fetch(filename).then(response => response.json());
 
-const processRawData = data => {
+const processRawData = (data) => {
   const finalData = [];
   for (const record of data) {
     if (record[0] > MIN_TIMESTAMP && record[0] < MAX_TIMESTAMP && record[2] > MIN_Y) {
@@ -251,36 +271,50 @@ const drawBaseMap = () => {
   }
 };
 
-const drawClock = (timestamp) => {
+const createClock = () => {
 
-  const drawHand = (angle, width, length) => {
-    ForegroundCtx.lineWidth = width;
-    ForegroundCtx.beginPath();
-    ForegroundCtx.moveTo(
-      CLOCK_CX - Math.sin(angle) * CLOCK_HAND_REVERSE_RADIUS,
-      CLOCK_CY + Math.cos(angle) * CLOCK_HAND_REVERSE_RADIUS,
-    );
-    ForegroundCtx.lineTo(
-      CLOCK_CX + Math.sin(angle) * length,
-      CLOCK_CY - Math.cos(angle) * length,
-    );
-    ForegroundCtx.stroke();
-  };
-
-  ForegroundCtx.strokeStyle = CLOCK_HAND_COLOR;
-  ForegroundCtx.fillStyle = CLOCK_FACE_COLOR;
+  const clockSvg = d3.select('#clock');
+  clockSvg
+    .attr('viewBox', `${-CLOCK_RADIUS} ${-CLOCK_RADIUS} ${CLOCK_RADIUS * 2} ${CLOCK_RADIUS * 2}`);
 
   // Clock background
-  ForegroundCtx.beginPath();
-  ForegroundCtx.ellipse(CLOCK_CX, CLOCK_CY, CLOCK_RADIUS, CLOCK_RADIUS, 0, 0, TWO_PI);
-  ForegroundCtx.fill();
+  clockSvg.append('circle')
+    .attr('r', CLOCK_RADIUS)
+    .attr('fill', CLOCK_FACE_COLOR)
+    .attr('stroke', 'none');
 
-  // Clock hands
+  // Clock tick marks
+  for (let hour = 0; hour < 12; hour++) {
+    clockSvg.append('path')
+      .attr('d', `M0,${CLOCK_TICK_MIN_RADIUS}L0,${CLOCK_TICK_MAX_RADIUS}`)
+      .attr('fill', 'none')
+      .attr('stroke', CLOCK_TICK_COLOR)
+      .attr('stroke-width', hour % 3 === 0 ? CLOCK_MAJOR_TICK_WIDTH : CLOCK_MINOR_TICK_WIDTH)
+      .attr('transform', `rotate(${360 * hour / 12})`)
+  }
+
+  // Clock hour hand
+  HourHand = clockSvg.append('path')
+    .attr('d', `M0,${CLOCK_HAND_REVERSE_RADIUS}L${-CLOCK_HOUR_HAND_WIDTH / 2},0L0,${-CLOCK_HOUR_HAND_RADIUS}L${CLOCK_HOUR_HAND_WIDTH / 2},0Z`)
+    .attr('fill', CLOCK_HAND_COLOR)
+    .attr('stroke', 'none');
+
+  // Clock minute hand
+  MinuteHand = clockSvg.append('path')
+    .attr('d', `M0,${CLOCK_HAND_REVERSE_RADIUS}L${-CLOCK_MINUTE_HAND_WIDTH / 2},0L0,${-CLOCK_MINUTE_HAND_RADIUS}L${CLOCK_MINUTE_HAND_WIDTH / 2},0Z`)
+    .attr('fill', CLOCK_HAND_COLOR)
+    .attr('stroke', 'none');
+};
+
+const updateClock = (timestamp) => {
+
   const timeDelta = timestamp - (MIN_TIMESTAMP - PH_TZ_OFFSET * SECS_IN_HOUR);
-  const hourAngle = timeDelta / SECS_IN_12_HOURS * TWO_PI;
-  const minuteAngle = (timeDelta % SECS_IN_HOUR) / SECS_IN_HOUR * TWO_PI;
-  drawHand(hourAngle  , CLOCK_HOUR_HAND_WIDTH  , CLOCK_HOUR_HAND_RADIUS  );
-  drawHand(minuteAngle, CLOCK_MINUTE_HAND_WIDTH, CLOCK_MINUTE_HAND_RADIUS);
+
+  const hourAngle = timeDelta / SECS_IN_12_HOURS * 360;
+  HourHand.attr('transform', `rotate(${hourAngle})`);
+
+  const minuteAngle = (timeDelta % SECS_IN_HOUR) / SECS_IN_HOUR * 360;
+  MinuteHand.attr('transform', `rotate(${minuteAngle})`);
 };
 
 const drawGpx = (data, strokeStyle, maxTime) => {
@@ -325,7 +359,7 @@ const drawFrame = () => {
 
   ForegroundCtx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-  drawClock(TimestampIter);
+  updateClock(TimestampIter);
 
   drawGpx(RedData   , RED_TEAM_COLOR   , TimestampIter);
   drawGpx(OrangeData, ORANGE_TEAM_COLOR, TimestampIter);
@@ -341,7 +375,8 @@ const drawFrame = () => {
 // MAIN PROCESS
 
 drawBaseMap();
- drawClock(MIN_TIMESTAMP);
+createClock();
+updateClock(MIN_TIMESTAMP);
 
 setTimeout(
   () => {
@@ -353,6 +388,7 @@ setTimeout(
   },
   1000,
 );
+
     </script>
   </body>
 </html>
