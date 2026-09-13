@@ -1,0 +1,30 @@
+{
+  "name": "osm-cavite-mapping-party",
+  "version": "1.1.1",
+  "description": "Animated map of OpenStreetMap Philippines’ Cavite Road Network Mapping Party on 11 September 2010",
+  "main": "code.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/seav/osm-cavite-mapping-party.git"
+  },
+  "keywords": [
+    "openstreetmap",
+    "philippines",
+    "cavite",
+    "html5"
+  ],
+  "author": "Eugene Alvin Villar (seav)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/seav/osm-cavite-mapping-party/issues"
+  },
+  "homepage": "https://seav.github.com/osm-cavite-mapping-party",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.10.0",
+    "globals": "^17.12.0"
+  }
+}
