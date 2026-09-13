@@ -1,7 +1,3 @@
-'use strict';
-
-import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7/+esm';
-
 // ----------------------------------------
 // FUNDAMENTAL CONSTANTS
 
@@ -9,6 +5,7 @@ const TWO_PI = Math.PI * 2;
 const SECS_IN_HOUR = 60 * 60;
 const SECS_IN_12_HOURS = SECS_IN_HOUR * 12;
 const PH_TZ_OFFSET = 8;  // in hours
+const SVG_NS = 'http://www.w3.org/2000/svg';
 
 // ----------------------------------------
 // APP PARAMETERS
@@ -70,15 +67,21 @@ let IsPlaying = false;
 let TimestampIter = MIN_TIMESTAMP;
 
 // References to DOM elements
-const MainDiv      = d3.select('main'       ).node();
-const PlayPauseBtn = d3.select('#play-pause').node();
-const ResetBtn     = d3.select('#reset'     ).node();
+const MainDiv      = document.querySelector('main');
+const PlayPauseBtn = document.querySelector('#play-pause');
+const ResetBtn     = document.querySelector('#reset');
 let HourHand, MinuteHand;
 
 // ----------------------------------------
 // FUNCTIONS
 
 const getJson = filename => fetch(filename).then(response => response.json());
+
+const createSvgElem = (elemName, attrs) => {
+  const elem = document.createElementNS(SVG_NS, elemName);
+  for (const attr of Object.entries(attrs)) elem.setAttribute(...attr);
+  return elem;
+};
 
 const fitToViewport = () => {
   const scale = Math.min(
@@ -116,37 +119,40 @@ const renderBaseMap = () => {
 
 const createClock = () => {
 
-  const clockSvg = d3.select('#clock');
-  clockSvg
-    .attr('viewBox', `${-CLOCK_RADIUS} ${-CLOCK_RADIUS} ${CLOCK_RADIUS * 2} ${CLOCK_RADIUS * 2}`);
+  const clockSvg = document.querySelector('#clock');
+  clockSvg.setAttribute('viewBox', `${-CLOCK_RADIUS} ${-CLOCK_RADIUS} ${CLOCK_RADIUS * 2} ${CLOCK_RADIUS * 2}`);
 
   // Clock background
-  clockSvg.append('circle')
-    .attr('r', CLOCK_RADIUS)
-    .attr('fill', CLOCK_FACE_COLOR)
-    .attr('stroke', 'none');
+  clockSvg.appendChild(createSvgElem('circle', {
+    r      : CLOCK_RADIUS,
+    fill   : CLOCK_FACE_COLOR,
+    stroke : 'none',
+  }));
 
   // Clock tick marks
   for (let hour = 0; hour < 12; hour++) {
-    clockSvg.append('path')
-      .attr('d', `M0,${CLOCK_TICK_MIN_RADIUS}L0,${CLOCK_TICK_MAX_RADIUS}`)
-      .attr('fill', 'none')
-      .attr('stroke', CLOCK_TICK_COLOR)
-      .attr('stroke-width', hour % 3 === 0 ? CLOCK_MAJOR_TICK_WIDTH : CLOCK_MINOR_TICK_WIDTH)
-      .attr('transform', `rotate(${360 * hour / 12})`)
+    clockSvg.appendChild(createSvgElem('path', {
+      d              : `M0,${CLOCK_TICK_MIN_RADIUS}L0,${CLOCK_TICK_MAX_RADIUS}`,
+      fill           : 'none',
+      stroke         : CLOCK_TICK_COLOR,
+      'stroke-width' : hour % 3 === 0 ? CLOCK_MAJOR_TICK_WIDTH : CLOCK_MINOR_TICK_WIDTH,
+      transform      : `rotate(${360 * hour / 12})`,
+    }));
   }
 
   // Clock hour hand
-  HourHand = clockSvg.append('path')
-    .attr('d', `M0,${CLOCK_HAND_REVERSE_RADIUS}L${-CLOCK_HOUR_HAND_WIDTH / 2},0L0,${-CLOCK_HOUR_HAND_RADIUS}L${CLOCK_HOUR_HAND_WIDTH / 2},0Z`)
-    .attr('fill', CLOCK_HAND_COLOR)
-    .attr('stroke', 'none');
+  HourHand = clockSvg.appendChild(createSvgElem('path', {
+    d      : `M0,${CLOCK_HAND_REVERSE_RADIUS}L${-CLOCK_HOUR_HAND_WIDTH / 2},0L0,${-CLOCK_HOUR_HAND_RADIUS}L${CLOCK_HOUR_HAND_WIDTH / 2},0Z`,
+    fill   : CLOCK_HAND_COLOR,
+    stroke : 'none',
+  }));
 
   // Clock minute hand
-  MinuteHand = clockSvg.append('path')
-    .attr('d', `M0,${CLOCK_HAND_REVERSE_RADIUS}L${-CLOCK_MINUTE_HAND_WIDTH / 2},0L0,${-CLOCK_MINUTE_HAND_RADIUS}L${CLOCK_MINUTE_HAND_WIDTH / 2},0Z`)
-    .attr('fill', CLOCK_HAND_COLOR)
-    .attr('stroke', 'none');
+  MinuteHand = clockSvg.appendChild(createSvgElem('path', {
+    d      : `M0,${CLOCK_HAND_REVERSE_RADIUS}L${-CLOCK_MINUTE_HAND_WIDTH / 2},0L0,${-CLOCK_MINUTE_HAND_RADIUS}L${CLOCK_MINUTE_HAND_WIDTH / 2},0Z`,
+    fill   : CLOCK_HAND_COLOR,
+    stroke : 'none',
+  }))
 };
 
 const updateClock = (timestamp) => {
@@ -154,10 +160,10 @@ const updateClock = (timestamp) => {
   const timeDelta = timestamp - (MIN_TIMESTAMP - PH_TZ_OFFSET * SECS_IN_HOUR);
 
   const hourAngle = timeDelta / SECS_IN_12_HOURS * 360;
-  HourHand.attr('transform', `rotate(${hourAngle})`);
+  HourHand.setAttribute('transform', `rotate(${hourAngle})`);
 
   const minuteAngle = (timeDelta % SECS_IN_HOUR) / SECS_IN_HOUR * 360;
-  MinuteHand.attr('transform', `rotate(${minuteAngle})`);
+  MinuteHand.setAttribute('transform', `rotate(${minuteAngle})`);
 };
 
 const drawGpx = (data, strokeStyle, maxTime) => {
