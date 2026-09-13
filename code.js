@@ -1,14 +1,19 @@
 // ----------------------------------------
 // FUNDAMENTAL CONSTANTS
 
-const TWO_PI = Math.PI * 2;
-const SECS_IN_HOUR = 60 * 60;
-const SECS_IN_12_HOURS = SECS_IN_HOUR * 12;
+const DOUBLER = 2;  // To indicate somthing needs to be doubled or halved
+const DEGS_IN_CIRCLE = 360;
+const SECS_IN_HOUR = 3600;
+const HOURS_IN_CLOCK = 12;
+const NUM_CLOCK_MAJOR_HOURS = 3;  // Hours in a quarter circle
+const SECS_IN_12_HOURS = SECS_IN_HOUR * HOURS_IN_CLOCK;
 const PH_TZ_OFFSET = 8;  // in hours
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 // ----------------------------------------
 // APP PARAMETERS
+
+const INITIAL_DELAY = 1000;  // in ms
 
 const MIN_Y = 0.5;
 const MIN_TIMESTAMP = 1284163200;  // 8am
@@ -44,8 +49,6 @@ const TRACK_WIDTH = 3;
 const RED_TEAM_COLOR = '#f66';
 const ORANGE_TEAM_COLOR = '#fb6';
 const GREEN_TEAM_COLOR = '#6f6';
-const TEAM_POS_RADIUS = 8;
-const TEAM_POS_COLOR = '#ff8';
 const TILE_X0 = 3419;
 const TILE_X1 = 3425;
 const TILE_Y0 = 1881;
@@ -57,11 +60,13 @@ const TILE_Y_ADJUST = -138;
 // ----------------------------------------
 // GLOBAL VARIABLES
 
-const TrackCtx      = document.getElementById('track'     ).getContext('2d');
-const ForegroundCtx = document.getElementById('foreground').getContext('2d');
+const TrackCtx = document.getElementById('track').getContext('2d');
 
-let RedData, GreenData, OrangeData;
-let StartPosition;
+let TeamInfo = {
+  red    : { posCircle: document.getElementById('red-pos'   ), color: RED_TEAM_COLOR    },
+  orange : { posCircle: document.getElementById('orange-pos'), color: ORANGE_TEAM_COLOR },
+  green  : { posCircle: document.getElementById('green-pos' ), color: GREEN_TEAM_COLOR  },
+};
 let DataIsReady = false;
 let IsPlaying = false;
 let TimestampIter = MIN_TIMESTAMP;
@@ -93,11 +98,11 @@ const fitToViewport = () => {
 
 const processRawData = (data) => {
   const finalData = [];
-  for (const record of data) {
-    if (record[0] >= MIN_TIMESTAMP && record[0] <= MAX_TIMESTAMP && record[2] > MIN_Y) {
-      const x = (record[1] - X_TRIM) * X_SCALE;
-      const y = (record[2] - Y_TRIM) * Y_SCALE;
-      finalData.push([record[0], x, y]);
+  for (const [timestamp, xOffset, yOffset] of data) {
+    if (timestamp >= MIN_TIMESTAMP && timestamp <= MAX_TIMESTAMP && yOffset > MIN_Y) {
+      const x = (xOffset - X_TRIM) * X_SCALE;
+      const y = (yOffset - Y_TRIM) * Y_SCALE;
+      finalData.push([timestamp, x, y]);
     }
   }
   return finalData;
@@ -120,7 +125,7 @@ const renderBaseMap = () => {
 const createClock = () => {
 
   const clockSvg = document.querySelector('#clock');
-  clockSvg.setAttribute('viewBox', `${-CLOCK_RADIUS} ${-CLOCK_RADIUS} ${CLOCK_RADIUS * 2} ${CLOCK_RADIUS * 2}`);
+  clockSvg.setAttribute('viewBox', `${-CLOCK_RADIUS} ${-CLOCK_RADIUS} ${CLOCK_RADIUS * DOUBLER} ${CLOCK_RADIUS * DOUBLER}`);
 
   // Clock background
   clockSvg.appendChild(createSvgElem('circle', {
@@ -130,89 +135,86 @@ const createClock = () => {
   }));
 
   // Clock tick marks
-  for (let hour = 0; hour < 12; hour++) {
+  for (let hour = 0; hour < HOURS_IN_CLOCK; hour++) {
     clockSvg.appendChild(createSvgElem('path', {
       d              : `M0,${CLOCK_TICK_MIN_RADIUS}L0,${CLOCK_TICK_MAX_RADIUS}`,
       fill           : 'none',
       stroke         : CLOCK_TICK_COLOR,
-      'stroke-width' : hour % 3 === 0 ? CLOCK_MAJOR_TICK_WIDTH : CLOCK_MINOR_TICK_WIDTH,
-      transform      : `rotate(${360 * hour / 12})`,
+      'stroke-width' : hour % NUM_CLOCK_MAJOR_HOURS === 0 ? CLOCK_MAJOR_TICK_WIDTH : CLOCK_MINOR_TICK_WIDTH,
+      transform      : `rotate(${DEGS_IN_CIRCLE * hour / HOURS_IN_CLOCK})`,
     }));
   }
 
   // Clock hour hand
+  const HOUR_HAND_HALF_WIDTH = CLOCK_HOUR_HAND_WIDTH / DOUBLER;
   HourHand = clockSvg.appendChild(createSvgElem('path', {
-    d      : `M0,${CLOCK_HAND_REVERSE_RADIUS}L${-CLOCK_HOUR_HAND_WIDTH / 2},0L0,${-CLOCK_HOUR_HAND_RADIUS}L${CLOCK_HOUR_HAND_WIDTH / 2},0Z`,
+    d      : `M0,${CLOCK_HAND_REVERSE_RADIUS}L${-HOUR_HAND_HALF_WIDTH},0L0,${-CLOCK_HOUR_HAND_RADIUS}L${HOUR_HAND_HALF_WIDTH},0Z`,
     fill   : CLOCK_HAND_COLOR,
     stroke : 'none',
   }));
 
   // Clock minute hand
+  const MINUTE_HAND_HALF_WIDTH = CLOCK_MINUTE_HAND_WIDTH / DOUBLER;
   MinuteHand = clockSvg.appendChild(createSvgElem('path', {
-    d      : `M0,${CLOCK_HAND_REVERSE_RADIUS}L${-CLOCK_MINUTE_HAND_WIDTH / 2},0L0,${-CLOCK_MINUTE_HAND_RADIUS}L${CLOCK_MINUTE_HAND_WIDTH / 2},0Z`,
+    d      : `M0,${CLOCK_HAND_REVERSE_RADIUS}L${-MINUTE_HAND_HALF_WIDTH},0L0,${-CLOCK_MINUTE_HAND_RADIUS}L${MINUTE_HAND_HALF_WIDTH},0Z`,
     fill   : CLOCK_HAND_COLOR,
     stroke : 'none',
-  }))
+  }));
 };
 
 const updateClock = (timestamp) => {
 
   const timeDelta = timestamp - (MIN_TIMESTAMP - PH_TZ_OFFSET * SECS_IN_HOUR);
 
-  const hourAngle = timeDelta / SECS_IN_12_HOURS * 360;
+  const hourAngle = timeDelta / SECS_IN_12_HOURS * DEGS_IN_CIRCLE;
   HourHand.setAttribute('transform', `rotate(${hourAngle})`);
 
-  const minuteAngle = (timeDelta % SECS_IN_HOUR) / SECS_IN_HOUR * 360;
+  const minuteAngle = (timeDelta % SECS_IN_HOUR) / SECS_IN_HOUR * DEGS_IN_CIRCLE;
   MinuteHand.setAttribute('transform', `rotate(${minuteAngle})`);
 };
 
-const drawGpx = (data, strokeStyle, maxTime) => {
+const drawGpx = (teamInfo) => {
 
   let hasStarted;
-  let firstRecord = data[0];
-  let lastRecord;
+  let firstRecord = teamInfo.track[0];
+  let finalXY;
 
   // Draw portion of track between maxTime - TIMESTAMP_DELTA and maxTime
-  for (const record of data) {
-    if (record[0] < maxTime - TIMESTAMP_DELTA) {
+  for (const record of teamInfo.track) {
+    const [timestamp, x, y] = record;
+    if (timestamp < TimestampIter - TIMESTAMP_DELTA) {
       firstRecord = record;
     }
-    else if (record[0] <= maxTime) {
+    else if (timestamp <= TimestampIter) {
       if (!hasStarted) {
         hasStarted = true;
         TrackCtx.beginPath();
-        TrackCtx.moveTo(firstRecord[1], firstRecord[2]);
+        TrackCtx.moveTo(x, y);
       }
-      TrackCtx.lineTo(record[1], record[2]);
+      TrackCtx.lineTo(x, y);
 
-      lastRecord = record;
+      finalXY = `${x},${y}`;
     }
     else break;
   }
   if (hasStarted) {
-    TrackCtx.strokeStyle = strokeStyle;
+    TrackCtx.strokeStyle = teamInfo.color;
     TrackCtx.stroke();
   }
   else {
-    lastRecord = firstRecord;
+    const [, x, y] = firstRecord;
+    finalXY = `${x},${y}`;
   }
 
-  // Draw current position of team as a circle
-  ForegroundCtx.fillStyle = TEAM_POS_COLOR;
-  ForegroundCtx.beginPath();
-  ForegroundCtx.ellipse(lastRecord[1], lastRecord[2], TEAM_POS_RADIUS, TEAM_POS_RADIUS, 0, 0, TWO_PI);
-  ForegroundCtx.fill();
+  // Update position circle
+  teamInfo.posCircle.setAttribute('transform', `translate(${finalXY})`);
 };
 
 const drawFrame = () => {
 
-  ForegroundCtx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
   updateClock(TimestampIter);
 
-  drawGpx(RedData   , RED_TEAM_COLOR   , TimestampIter);
-  drawGpx(OrangeData, ORANGE_TEAM_COLOR, TimestampIter);
-  drawGpx(GreenData , GREEN_TEAM_COLOR , TimestampIter);
+  for (const info of Object.values(TeamInfo)) drawGpx(info);
 
   if (TimestampIter < MAX_TIMESTAMP) {
     TimestampIter += TIMESTAMP_DELTA;
@@ -243,9 +245,8 @@ const pause = () => {
 const reset = () => {
   TimestampIter = MIN_TIMESTAMP;
   updateClock(MIN_TIMESTAMP);
-  ForegroundCtx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-  TrackCtx     .clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-  drawGpx(StartPosition, '', MIN_TIMESTAMP);
+  TrackCtx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  for (const info of Object.values(TeamInfo)) drawGpx(info);
 };
 
 // ----------------------------------------
@@ -253,7 +254,7 @@ const reset = () => {
 
 window.addEventListener('resize', fitToViewport);
 window.addEventListener('orientationchange', fitToViewport);
-PlayPauseBtn.addEventListener('click', () => { (IsPlaying ? pause : play)() });
+PlayPauseBtn.addEventListener('click', () => { (IsPlaying ? pause : play)(); });
 ResetBtn.addEventListener('click', reset);
 
 TrackCtx.lineWidth = TRACK_WIDTH;
@@ -265,20 +266,16 @@ renderBaseMap();
 createClock();
 updateClock(MIN_TIMESTAMP);
 
-Promise.all([
-  getJson('red.json'   ).then(data => { RedData    = processRawData(data) }),
-  getJson('green.json' ).then(data => { GreenData  = processRawData(data) }),
-  getJson('orange.json').then(data => { OrangeData = processRawData(data) }),
-]).then(() => {
-
-  // All teams start from the same location (Alabang), so we only need to
-  // draw 1 starting position dot at the start and when resetting.
-  StartPosition = [OrangeData[0]];
+Promise.all(
+  Object.keys(TeamInfo).map((colorName) => getJson(`${colorName}.json`).then(data => {
+    TeamInfo[colorName].track = processRawData(data);
+  }))
+).then(() => {
 
   DataIsReady = true;
   PlayPauseBtn.disabled = false;
   ResetBtn.disabled = false;
   reset();
 
-  setTimeout(play, 1000);
+  setTimeout(play, INITIAL_DELAY);
 });

@@ -49,12 +49,17 @@ img.tile {
   filter: brightness(1.5) contrast(0.9);
 }
 
-canvas {
+canvas, #team-positions {
   position: absolute;
   top: 0;
   left: 0;
   width: 1200px;
   height: 900px;
+  pointer-events: none;
+}
+
+#team-positions circle {
+  fill: #ff8;
 }
 
 #description {
@@ -200,7 +205,11 @@ canvas {
     <main>
       <div id="base-map"></div>
       <canvas id="track"      width="1600" height="1200"></canvas>
-      <canvas id="foreground" width="1600" height="1200"></canvas>
+      <svg id="team-positions" viewBox="0 0 1600 1200">
+        <circle id="red-pos"    r="8"/>
+        <circle id="orange-pos" r="8"/>
+        <circle id="green-pos"  r="8"/>
+      </svg>
       <div id="description">
         <h1>Cavite Road Network Mapping Party</h1>
         <p>9&nbsp;people, 3&nbsp;vehicles, 12&nbsp;GPS units, 10&nbsp;&frac12;&nbsp;hours, 500&nbsp;kilometers, 13&nbsp;towns and cities, 1,300&nbsp;POIs, 1&nbsp;massive OpenStreetMap mapping party!</p>
