@@ -92,7 +92,7 @@ canvas {
 #description .attribution {
   margin-top: 1.2em;
   padding-top: 0.5em;
-  border-top: 1px solid #a98;
+  border-top: 1px solid #888;
   font-size: 14px;
   line-height: 1.5;
   color: #aaa;
@@ -130,10 +130,68 @@ canvas {
 
 #clock {
   position: absolute;
-  bottom: 20px;
+  bottom: 80px;
   right: 20px;
   width: 200px;
   height: 200px;
+  border-radius: 100px;
+  box-shadow: #000c 5px 5px 10px;
+}
+
+#controls {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  width: 200px;
+  height: 50px;
+  text-align: center;
+}
+
+#controls button {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  width: 70px;
+  height: 50px;
+  background: #555;
+  box-shadow: #000c 5px 5px 10px;
+  cursor: pointer;
+}
+
+#controls button svg {
+  display: inline-block;
+  margin: 12.5px 17.5px;
+  width: 27.5px;
+  height: 25px;
+  stroke: #ffc;
+}
+
+#controls button svg path {
+  stroke-width: 32;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+#reset {
+  border-bottom-left-radius: 20px;
+  border-top-left-radius: 20px;
+  text-align: right;
+}
+
+#play-pause {
+  border-bottom-right-radius: 20px;
+  border-top-right-radius: 20px;
+  text-align: left;
+}
+
+#play-pause.pause #play-icon,
+#play-pause.play #pause-icon {
+  display: none;
+}
+
+#play-icon, #pause-icon {
+  fill: #ffc;
 }
 
     </style>
@@ -143,7 +201,6 @@ canvas {
       <div id="base-map"></div>
       <canvas id="track"      width="1600" height="1200"></canvas>
       <canvas id="foreground" width="1600" height="1200"></canvas>
-      <svg id="clock"></svg>
       <div id="description">
         <h1>Cavite Road Network Mapping Party</h1>
         <p>9&nbsp;people, 3&nbsp;vehicles, 12&nbsp;GPS units, 10&nbsp;&frac12;&nbsp;hours, 500&nbsp;kilometers, 13&nbsp;towns and cities, 1,300&nbsp;POIs, 1&nbsp;massive OpenStreetMap mapping party!</p>
@@ -168,6 +225,22 @@ canvas {
           Base map style: CARTO Dark Matter<br>
           This map’s <a href="https://github.com/seav/osm-cavite-mapping-party">source code in GitHub</a>
         </p>
+      </div>
+      <svg id="clock"></svg>
+      <div id="controls">
+        <button id="reset" title="Reset" aria-label="Reset" disabled>
+          <svg viewBox="-110 -100 220 200">
+            <path fill="none" d="M-59.397,59.397A82,82 0 1 0 -59.397,-59.397l-25,25v-45v45h45"/>
+          </svg>
+        </button>
+        <button id="play-pause" class="play" title="Play" aria-label="Play" disabled>
+          <svg id="play-icon" viewBox="-110 -100 220 200">
+            <path d="M90,0L-70,-84V84Z"/>
+          </svg>
+          <svg id="pause-icon" viewBox="-110 -100 220 200">
+            <path d="M-70,-84V84H-40V-84ZM70,-84V84H40V-84Z"/>
+          </svg>
+        </button>
       </div>
     </main>
     <script type="module" src="code.js"></script>

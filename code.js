@@ -64,15 +64,16 @@ const TrackCtx      = document.getElementById('track'     ).getContext('2d');
 const ForegroundCtx = document.getElementById('foreground').getContext('2d');
 
 let RedData, GreenData, OrangeData;
+let StartPosition;
+let DataIsReady = false;
+let IsPlaying = false;
 let TimestampIter = MIN_TIMESTAMP;
 
 // References to DOM elements
-const MainDiv = d3.select('main');
+const MainDiv      = d3.select('main'       ).node();
+const PlayPauseBtn = d3.select('#play-pause').node();
+const ResetBtn     = d3.select('#reset'     ).node();
 let HourHand, MinuteHand;
-
-TrackCtx.lineWidth = TRACK_WIDTH;
-TrackCtx.lineCap = 'round';
-TrackCtx.lineJoin = 'round';
 
 // ----------------------------------------
 // FUNCTIONS
@@ -84,13 +85,13 @@ const fitToViewport = () => {
     window.innerWidth  / MAP_WIDTH,
     window.innerHeight / MAP_HEIGHT,
   );
-  MainDiv.node().style.transform = `scale(${scale})`;
+  MainDiv.style.transform = `scale(${scale})`;
 };
 
 const processRawData = (data) => {
   const finalData = [];
   for (const record of data) {
-    if (record[0] > MIN_TIMESTAMP && record[0] < MAX_TIMESTAMP && record[2] > MIN_Y) {
+    if (record[0] >= MIN_TIMESTAMP && record[0] <= MAX_TIMESTAMP && record[2] > MIN_Y) {
       const x = (record[1] - X_TRIM) * X_SCALE;
       const y = (record[2] - Y_TRIM) * Y_SCALE;
       finalData.push([record[0], x, y]);
@@ -99,7 +100,7 @@ const processRawData = (data) => {
   return finalData;
 };
 
-const drawBaseMap = () => {
+const renderBaseMap = () => {
   const div = document.getElementById('base-map');
   for (let x = TILE_X0; x <= TILE_X1; x++) {
     for (let y = TILE_Y0; y <= TILE_Y1; y++) {
@@ -209,28 +210,69 @@ const drawFrame = () => {
 
   if (TimestampIter < MAX_TIMESTAMP) {
     TimestampIter += TIMESTAMP_DELTA;
-    requestAnimationFrame(drawFrame);
+    if (IsPlaying) requestAnimationFrame(drawFrame);
   }
-}
+  else {
+    pause();
+  }
+};
+
+const play = () => {
+  if (!DataIsReady || IsPlaying) return;
+  if (TimestampIter >= MAX_TIMESTAMP) reset();
+  IsPlaying = true;
+  PlayPauseBtn.className = 'pause';
+  PlayPauseBtn.setAttribute('title', 'Pause');
+  PlayPauseBtn.setAttribute('aria-label', 'Pause');
+  requestAnimationFrame(drawFrame);
+};
+
+const pause = () => {
+  IsPlaying = false;
+  PlayPauseBtn.className = 'play';
+  PlayPauseBtn.setAttribute('title', 'Play');
+  PlayPauseBtn.setAttribute('aria-label', 'Play');
+};
+
+const reset = () => {
+  TimestampIter = MIN_TIMESTAMP;
+  updateClock(MIN_TIMESTAMP);
+  ForegroundCtx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  TrackCtx     .clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+  drawGpx(StartPosition, '', MIN_TIMESTAMP);
+};
 
 // ----------------------------------------
 // MAIN PROCESS
 
 window.addEventListener('resize', fitToViewport);
 window.addEventListener('orientationchange', fitToViewport);
+PlayPauseBtn.addEventListener('click', () => { (IsPlaying ? pause : play)() });
+ResetBtn.addEventListener('click', reset);
+
+TrackCtx.lineWidth = TRACK_WIDTH;
+TrackCtx.lineCap = 'round';
+TrackCtx.lineJoin = 'round';
 
 fitToViewport();
-drawBaseMap();
+renderBaseMap();
 createClock();
 updateClock(MIN_TIMESTAMP);
 
-setTimeout(
-  () => {
-    Promise.all([
-      getJson('red.json'   ).then(data => { RedData    = processRawData(data) }),
-      getJson('green.json' ).then(data => { GreenData  = processRawData(data) }),
-      getJson('orange.json').then(data => { OrangeData = processRawData(data) }),
-    ]).then(() => { requestAnimationFrame(drawFrame) });
-  },
-  1000,
-);
+Promise.all([
+  getJson('red.json'   ).then(data => { RedData    = processRawData(data) }),
+  getJson('green.json' ).then(data => { GreenData  = processRawData(data) }),
+  getJson('orange.json').then(data => { OrangeData = processRawData(data) }),
+]).then(() => {
+
+  // All teams start from the same location (Alabang), so we only need to
+  // draw 1 starting position dot at the start and when resetting.
+  StartPosition = [OrangeData[0]];
+
+  DataIsReady = true;
+  PlayPauseBtn.disabled = false;
+  ResetBtn.disabled = false;
+  reset();
+
+  setTimeout(play, 1000);
+});
