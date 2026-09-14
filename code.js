@@ -15,7 +15,6 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 
 const INITIAL_DELAY = 1000;  // in ms
 
-const MIN_Y = 0.5;
 const MIN_TIMESTAMP = 1284163200;  // 8am
 const MAX_TIMESTAMP = 1284202800;  // 7pm
 
@@ -99,11 +98,9 @@ const fitToViewport = () => {
 const processRawData = (data) => {
   const finalData = [];
   for (const [timestamp, xOffset, yOffset] of data) {
-    if (timestamp >= MIN_TIMESTAMP && timestamp <= MAX_TIMESTAMP && yOffset > MIN_Y) {
-      const x = (xOffset - X_TRIM) * X_SCALE;
-      const y = (yOffset - Y_TRIM) * Y_SCALE;
-      finalData.push([timestamp, x, y]);
-    }
+    const x = (xOffset - X_TRIM) * X_SCALE;
+    const y = (yOffset - Y_TRIM) * Y_SCALE;
+    finalData.push([timestamp, x, y]);
   }
   return finalData;
 };
